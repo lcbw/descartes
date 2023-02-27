@@ -126,14 +126,24 @@ bool MoveitStateAdapter::initialize(robot_model::RobotModelConstPtr, const std::
   }
 
   auto model_frame = robot_state_->getRobotModel()->getModelFrame();
-  if (world_frame_ != model_frame)
-  {
-    CONSOLE_BRIDGE_logInform("%s: World frame '%s' does not match model root frame '%s', all poses will be"
-              " transformed to world frame '%s'",
-              __FUNCTION__, world_frame_.c_str(), model_frame.c_str(), world_frame_.c_str());
+  if (world_frame_ != model_frame) {
+      CONSOLE_BRIDGE_logInform(
+          "%s: World frame '%s' does not match model root frame '%s', all poses will be"
+          " transformed to world frame '%s'",
+          __FUNCTION__,
+          world_frame_.c_str(),
+          model_frame.c_str(),
+          world_frame_.c_str());
 
-    Eigen::Isometry3d root_to_world(robot_state_->getFrameTransform(world_frame_).matrix());
-    world_to_root_ = descartes_core::Frame(root_to_world.inverse());
+      bool found;
+      Eigen::Isometry3d root_to_world(
+          robot_state_->getFrameTransform(world_frame_, &found).matrix());
+      if (!found) {
+          std::string message = "Failed to find world frame '" + world_frame_ + "'";
+          CONSOLE_BRIDGE_logError(message.c_str());
+          return false;
+      }
+      world_to_root_ = descartes_core::Frame(root_to_world.inverse());
   }
 
   get_planning_scene_client_ = nh_.serviceClient<moveit_msgs::GetPlanningScene>(move_group::GET_PLANNING_SCENE_SERVICE_NAME);
